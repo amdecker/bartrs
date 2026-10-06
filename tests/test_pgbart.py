@@ -56,3 +56,40 @@ def test_coal():
             step=[PGBART([mu], batch=BATCH_SIZE, num_particles=NUM_PARTICLES)],
             random_seed=RANDOM_SEED,
         )
+
+
+def _test_model(random_seed):
+    """Sample a small BART regression with parallel chains and return the draws of mu."""
+    rng = np.random.default_rng(0)
+    X = rng.uniform(0, 1, (100, 1))
+    Y = rng.normal(np.sin(3 * X[:, 0]), 0.3)
+
+    with pm.Model() as model:
+        mu = pmb.BART("mu", X, Y, m=NUM_TREES, response="constant")
+        y = pm.Normal("y", mu=mu, sigma=0.3, observed=Y)
+
+        idata = pm.sample(
+            tune=NUM_TUNE,
+            draws=NUM_DRAWS,
+            chains=NUM_CHAINS,
+            cores=NUM_CHAINS,
+            step=[PGBART([mu], batch=BATCH_SIZE, num_particles=NUM_PARTICLES)],
+            random_seed=random_seed,
+        )
+    return idata.posterior["mu"]
+
+
+def test_chains_differ():
+    """Ensure chains are not exact copies of each other."""
+    draws = _test_model(RANDOM_SEED)
+    assert not np.array_equal(draws.sel(chain=0), draws.sel(chain=1))
+
+
+def test_random_seed_reproduces_chains():
+    """Ensure using the same seed produces the same result and different seeds
+    produce different results."""
+    draws = _test_model(RANDOM_SEED)
+    draws_again = _test_model(RANDOM_SEED)
+    other_seed = _test_model(RANDOM_SEED + 1)
+    assert np.array_equal(draws, draws_again)
+    assert not np.array_equal(draws, other_seed)

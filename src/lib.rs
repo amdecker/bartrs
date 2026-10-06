@@ -237,6 +237,10 @@ impl PySampler {
         }
     }
 
+    fn set_seed(&mut self, seed: u64) {
+        self.rng = SmallRng::seed_from_u64(seed);
+    }
+
     #[pyo3(signature = (tune = None))]
     #[allow(clippy::type_complexity)]
     fn step<'py>(

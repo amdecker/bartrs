@@ -282,7 +282,9 @@ class PGBART(ArrayStepShared):
         return Competence.INCOMPATIBLE
 
     def setup_chain(self, rng: np.random.Generator, tune: int, draws: int) -> None:
-        # Maybe we use the _rng in later versions
+        # Seed the Rust sampler from the generator PyMC gives this chain, so that
+        # chains differ and runs are reproducible from random_seed
+        self.pg_bart.set_seed(rng.bit_generator.random_raw())
         self.n_draws = draws
         self.pg_bart.reserve_draws(draws)
 
